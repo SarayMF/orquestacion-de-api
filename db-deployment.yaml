@@ -1,0 +1,73 @@
+#Definir un volumen persistente para mysql
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pv-claim
+  labels:
+    app: mysql
+    tier: database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+
+---
+#Configurar el deployment de mysql server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+    tier: database
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+      tier: database
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+        tier: database
+    spec:
+      containers:
+        - image: saraymf/mysql:latest
+          name: mysql
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: pass
+            - name: MYSQL_DATABASE
+              value: tienda_discos
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-persisten-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-persisten-storage
+          persistentVolumeClaim:
+            claimName: mysql-pv-claim
+
+---
+#definir el servicio para mysql
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-db
+  labels:
+    app: mysql
+    tier: database
+spec:
+  ports:
+    - port: 3306
+      targetPort: 3306
+  selector:
+    app: mysql
+    tier: database
+  clusterIP: None
